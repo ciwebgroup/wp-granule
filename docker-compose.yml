@@ -1,0 +1,43 @@
+services:
+  wordpress:
+    container_name: wordpress
+    build: .
+    ports:
+      - 8080:80
+      - 9000:9000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./www/wp-config.php:/var/www/html/wp-config.php:ro
+      - ./www/wp-content:/var/www/html/wp-content
+    restart: always
+    environment:
+      - WORDPRESS_DB_HOST=mysql
+      - WORDPRESS_DB_USER=wordpress
+      - WORDPRESS_DB_PASSWORD=password
+      - WORDPRESS_DB_NAME=wordpress
+    networks:
+      - wordpress
+
+  mysql:
+    container_name: mysql
+    image: mysql:lts
+    cap_add:
+      - SYS_NICE
+    security_opt:
+      - seccomp:unconfined
+    volumes:
+      - ./mysql:/var/lib/mysql
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpass
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=wordpress
+      - MYSQL_USER=wordpress
+    networks:
+      - wordpress
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --mysql_native_password
+
+networks:
+  wordpress:
+    name: wordpress
+    driver: bridge
