@@ -7,8 +7,12 @@ services:
       - 9000:9000
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./www/wp-config.php:/var/www/html/wp-config.php:ro
-      - ./www/wp-content:/var/www/html/wp-content
+      - ./wp-config.php:/var/www/html/wp-config.php:ro
+      - ./.htaccess:/var/www/html/.htaccess:ro
+      - ./php.ini:/usr/local/etc/php/conf.d/php-overrides.ini
+      - ./wp-content:/var/www/html/wp-content
+      - ./scripts:/var/www/html/scripts
+      - ./mu-plugins:/var/www/html/wp-content/mu-plugins
     restart: always
     environment:
       - WORDPRESS_DB_HOST=mysql
@@ -17,6 +21,8 @@ services:
       - WORDPRESS_DB_NAME=wordpress
     networks:
       - wordpress
+    user: "www-data"
+    command: sh -c "npm run start:hmr & apache2-foreground"
 
   mysql:
     container_name: mysql
@@ -33,9 +39,65 @@ services:
       - MYSQL_PASSWORD=password
       - MYSQL_DATABASE=wordpress
       - MYSQL_USER=wordpress
+      - PMM_AGENT_SERVER_ADDRESS=pmm-server
+      - PMM_AGENT_SERVER_USERNAME=admin
+      - PMM_AGENT_SERVER_PASSWORD=admin
     networks:
       - wordpress
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --mysql_native_password
+
+  jmeter:
+    image: justb4/jmeter:5.5
+    container_name: jmeter
+    volumes:
+      - ./jmeter:/jmeter
+    entrypoint: ["jmeter", "-n", "-t", "/jmeter/test-plan.jmx", "-l", "/jmeter/results.jtl"]
+    networks:
+      - wordpress
+
+  locust:
+    image: locustio/locust
+    container_name: locust
+    ports:
+      - 8089:8089
+    volumes:
+      - ./locust:/mnt/locust
+    command: -f /mnt/locust/locustfile.py --host=http://wordpress:80
+    networks:
+      - wordpress
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.22
+    container_name: jaeger
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+      - "9411:9411"
+    networks:
+      - wordpress
+
+  pmm-server:
+    image: percona/pmm-server:2
+    container_name: pmm-server
+    ports:
+      - "80:80"
+    volumes:
+      - ./pmm-data:/srv
+
+  pmm-client:
+    image: percona/pmm-client:2
+    container_name: pmm-client
+    environment:
+      - PMM_AGENT_SERVER_ADDRESS=pmm-server
+      - PMM_AGENT_SERVER_USERNAME=admin
+      - PMM_AGENT_SERVER_PASSWORD=admin
+    networks:
+      - wordpress
 
 networks:
   wordpress:

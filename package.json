@@ -1,0 +1,19 @@
+{
+  "name": "wp-debug",
+  "version": "1.0.0",
+  "scripts": {
+    "wp": "docker-compose exec wordpress wp $@",
+    "composer": "docker-compose exec wordpress composer $@",
+    "test": "docker-compose exec wordpress ./scripts/test.sh",
+    "test:simulate-traffic": "docker compose exec jmeter jmeter -n -t /jmeter/test-plan.jmx -l /jmeter/results.jtl",
+    "test:stress": "docker compose exec locust locust -f /mnt/locust/locustfile.py --host=http://wordpress:80",
+    "site:pull": "docker compose exec wordpress ./scripts/site-pull.sh $@",
+    "site:push": "docker compose exec wordpress ./scripts/site-push.sh $@",
+    "db:import": "docker compose exec wordpress ./scripts/db-import.sh $@",
+    "db:export": "docker compose exec wordpress ./scripts/db-export.sh $@",
+    "start:hmr": "node server/hmr-server.js"
+  },
+  "dependencies": {
+    "ws": "^7.5.5"
+  }
+}

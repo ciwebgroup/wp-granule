@@ -1,2 +1,4 @@
-mysql
-www/wp-content
+mysql/
+wp-content/
+jmeter/
+locust/
